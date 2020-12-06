@@ -1,0 +1,75 @@
+version: "3.4"
+services:
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    hostname: grafana
+    restart: always
+    ports:
+      - 3000:3000
+    networks:
+      - monitoring
+    volumes:
+      - grafana-volume:/vol01/Docker/monitoring
+
+  influxdb:
+    image: influxdb
+    container_name: influxdb
+    hostname: influxdb
+    restart: always
+    ports:
+      - 8086:8086
+    networks:
+      - monitoring
+    volumes:
+      - influxdb-volume:/vol01/Docker/monitoring
+    env_file:
+      - ../.env
+
+  chronograf:
+    image: chronograf:latest
+    container_name: chronograf
+    restart: always
+    ports:
+      - 8888:8888
+    volumes:
+      - chronograf-volume:/var/lib/chronograf
+    networks:
+      - monitoring
+    depends_on:
+      - influxdb
+    env_file:
+      - ../.env
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_USERNAME=${INFLUXDB_ADMIN_USER}
+      - INFLUXDB_PASSWORD=${INFLUXDB_ADMIN_PASSWORD}
+
+  telegraf:
+    image: telegraf
+    container_name: telegraf
+    restart: always
+    networks:
+      - monitoring
+    depends_on:
+      - influxdb
+    env_file:
+      - ../.env
+    environment:
+      - HOST_PROC=/rootfs/proc
+      - HOST_SYS=/rootfs/sys
+      - HOST_ETC=/rootfs/etc
+    volumes:
+     - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+     - /var/run/docker.sock:/var/run/docker.sock:ro
+     - /sys:/rootfs/sys:ro
+     - /proc:/rootfs/proc:ro
+     - /etc:/rootfs/etc:ro
+
+
+networks:
+  monitoring:
+volumes:
+  grafana-volume:
+  influxdb-volume:
+  chronograf-volume:
